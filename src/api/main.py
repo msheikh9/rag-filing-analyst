@@ -55,15 +55,17 @@ def query(req: QueryRequest):
         )
 
         citations.append(
-            Citation(
-                score=float(r.score),
-                chunk_id=chunk_id,
-                company=p.get("company"),
-                year=p.get("year"),
-                section=p.get("section"),
-                snippet=(text[:240] + "...") if text else None,
-            )
-        )
+    Citation(
+        score=float(r.score),
+        chunk_id=chunk_id,
+        company=p.get("company"),
+        year=p.get("year"),
+        filingDate=p.get("filingDate"),
+        docID=p.get("docID"),
+        section=p.get("section"),
+        snippet=(text[:240] + "...") if text else None,
+    )
+)
 
     prompt = build_prompt(req.query, contexts)
     answer = llm.generate(prompt)

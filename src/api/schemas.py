@@ -10,6 +10,8 @@ class Citation(BaseModel):
     chunk_id: str | None = None
     company: str | None = None
     year: str | None = None
+    filingDate: str | None = None
+    docID: str | None = None
     section: str | None = None
     snippet: str | None = None
 

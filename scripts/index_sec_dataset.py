@@ -38,10 +38,11 @@ def main():
     batch_payloads = []
 
     for row in ds:
-        company = str(row.get("cik") or row.get("company") or "unknown")
-        year = str(row.get("year") or row.get("filing_year") or "unknown")
-        section = str(row.get("section") or row.get("section_name") or "unknown")
-        sentence = str(row.get("sentence") or row.get("text") or "").strip()
+        filing_date = str(row.get("filingDate") or "unknown")
+        year = filing_date[:4] if len(filing_date) >= 4 else "unknown"
+        company = str(row.get("cik") or "unknown")
+        section = str(row.get("section") or "unknown")
+        sentence = str(row.get("sentence") or "").strip()
         if not sentence:
             continue
 
@@ -53,14 +54,16 @@ def main():
             chunk_id = stable_id(doc_id, str(idx), chunk_text[:80])
 
             payload = {
-                "doc_id": doc_id,
-                "chunk_id": chunk_id,
-                "company": company,
-                "year": year,
-                "section": section,
-                "text": chunk_text,
-                "source": "khaihernlow/financial-reports-sec",
-            }
+    "doc_id": doc_id,
+    "chunk_id": chunk_id,
+    "company": company,
+    "year": year,
+    "filingDate": filing_date,
+    "docID": str(row.get("docID") or "unknown"),
+    "section": section,
+    "text": chunk_text,
+    "source": "khaihernlow/financial-reports-sec/small_lite",
+}
 
             batch_texts.append(chunk_text)
             batch_payloads.append(payload)
