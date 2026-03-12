@@ -23,6 +23,17 @@ Return ranked citations with metadata for traceability
 
 The result is a reproducible, domain-specific question answering service.
 
+##DEMO
+
+### API Documentation
+
+<img width="1469" height="792" alt="home page screenshot rag" src="https://github.com/user-attachments/assets/73e839f5-5f6e-4f6a-9a5e-e6aa93843fa1" />
+
+### Example Query Response
+<img width="928" height="244" alt="updated rag response" src="https://github.com/user-attachments/assets/d30c11ba-720b-41a6-a72e-b86cd6faae32" />
+
+
+
 Architecture
 
 User Query
