@@ -1,79 +1,80 @@
-#RAG Filing Analyst (Local, Production-Style)
+RAG Filing Analyst
 
-A fully local Retrieval-Augmented Generation (RAG) service that performs grounded question answering over SEC 10-K financial filings.
+A production-style Retrieval-Augmented Generation (RAG) service for grounded question answering over SEC 10-K financial filings.
 
-This system:
+This project demonstrates an end-to-end RAG pipeline integrating vector search, transformer-based embeddings, and a local large language model to return traceable, citation-backed responses.
 
-Indexes real SEC filings into a vector database (Qdrant)
+Overview
 
-Uses local sentence-transformer embeddings
+Large language models alone are not reliable knowledge systems.
+They lack access to structured domain data and can produce hallucinated outputs.
 
-Uses a local LLM via Ollama
+This system implements Retrieval-Augmented Generation (RAG) to:
 
-Returns source-grounded answers with ranked citations
+Index real SEC 10-K filings into a vector database
 
-Exposes a production-style FastAPI service with OpenAPI docs
+Retrieve semantically relevant document chunks
+
+Construct a grounded prompt using retrieved context
+
+Generate an answer constrained to source material
+
+Return ranked citations with metadata for traceability
+
+The result is a reproducible, domain-specific question answering service.
 
 Architecture
 
 User Query
 ↓
-Embed query (Sentence-Transformers)
+Embedding Model (Sentence-Transformers)
 ↓
-Vector search (Qdrant)
+Vector Search (Qdrant)
 ↓
-Retrieve top-k relevant filing chunks
+Top-K Relevant Filing Chunks
 ↓
-Construct grounded prompt
+Grounded Prompt Construction
 ↓
-Generate answer (Ollama LLM)
+Local LLM Inference (Ollama)
 ↓
-Return JSON with answer + citations
+Structured JSON Response (Answer + Citations)
 
 Tech Stack
+
+Backend:
 
 Python 3.11
 
 FastAPI
 
-Qdrant (Docker)
+Pydantic
 
-Sentence-Transformers (local embeddings)
+Vector Store:
 
-Ollama (local LLM)
+Qdrant (Dockerized)
 
-Hugging Face Datasets (SEC filings)
+Embeddings:
 
-Quickstart
-1. Start Qdrant
+sentence-transformers/all-MiniLM-L6-v2
 
-docker compose up -d
+LLM:
 
-2. Install dependencies
+llama3.1:8b (via Ollama)
 
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+Dataset:
 
-3. Pull local model
+SEC 10-K filings (Hugging Face dataset)
 
-ollama pull llama3.1:8b
+API
+Health Check
 
-4. Index dataset
+GET /health
 
-python3 -m scripts.index_sec_dataset
-
-5. Run API
-
-uvicorn src.api.main:app --reload
-
-Visit:
-
-http://localhost:8000/docs
-
-Example Query
+Query
 
 POST /query
+
+Request:
 
 {
 "query": "Summarize the key risk factors mentioned."
@@ -81,38 +82,70 @@ POST /query
 
 Response:
 
-Grounded answer
+{
+"answer": "...",
+"citations": [
+{
+"score": 0.67,
+"company": "0000001750",
+"year": "2020",
+"filingDate": "2020-07-21",
+"docID": "0000001750_10-K_2020",
+"section": "1"
+}
+]
+}
 
-Ranked citations
+Swagger UI available at:
 
-Filing date
+http://localhost:8000/docs
 
-Document ID
+Quickstart
 
-Section metadata
+Start Qdrant
 
-Why RAG?
+docker compose up -d
 
-Large language models alone hallucinate and lack source traceability.
+Install dependencies
 
-RAG:
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 
-Grounds answers in real documents
+Pull local model
 
-Improves factual reliability
+ollama pull llama3.1:8b
 
-Provides auditability via citations
+Index dataset
 
-Enables domain-specific knowledge systems
+python3 -m scripts.index_sec_dataset
 
-Future Improvements
+Run API
 
-Add hybrid BM25 + vector retrieval
+uvicorn src.api.main:app --reload
 
-Add reranking stage
+Key Capabilities
 
-Add evaluation metrics (Recall@K)
+Semantic retrieval over financial filings
 
-Support multi-year comparison
+Context-aware answer generation
 
-Add UI dashboard
+Ranked citations with document metadata
+
+Modular architecture (vectorstore, embeddings, LLM separated)
+
+Fully local inference pipeline
+
+Reproducible environment
+
+Future Extensions
+
+Hybrid retrieval (BM25 + vector)
+
+Cross-encoder reranking
+
+Retrieval evaluation metrics (Recall@K)
+
+Multi-year comparative analysis
+
+Frontend interface
