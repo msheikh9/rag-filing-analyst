@@ -8,9 +8,10 @@
 
 A Retrieval-Augmented Generation (RAG) system for querying and analyzing SEC 10-K filings. Ask questions in natural language and get answers backed by cited source documents — all processed locally with no data sent to external APIs.
 
-![Homepage](docs/screenshots/homepage.png)
+## Demo
+<img width="1442" height="795" alt="Results SEC" src="https://github.com/user-attachments/assets/73f2e39e-b425-4121-95d5-d07dcbdf6768" />
 
-![Search Results](docs/screenshots/search-results.png)
+
 
 ## Architecture
 
