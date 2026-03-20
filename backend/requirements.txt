@@ -8,3 +8,7 @@ pydantic==2.8.2
 python-dotenv==1.0.1
 sentence-transformers==5.2.3
 requests==2.32.3
+python-multipart==0.0.6
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+httpx>=0.24.0

@@ -22,8 +22,9 @@ def main():
     split="train",
     trust_remote_code=True,
 )
-    # Keep first run fast and cheap: index a small subset
-    max_rows = 300
+    # Shuffle so we get a diverse mix of companies, then take a subset
+    ds = ds.shuffle(seed=42)
+    max_rows = 2000
     ds = ds.select(range(min(max_rows, len(ds))))
 
     embedder = Embedder(settings.embedding_model)

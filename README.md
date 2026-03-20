@@ -1,162 +1,198 @@
-RAG Filing Analyst
+# RAG Filing Analyst
 
-A production-style Retrieval-Augmented Generation (RAG) service for grounded question answering over SEC 10-K financial filings.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![React 18](https://img.shields.io/badge/react-18-blue.svg?logo=react)](https://reactjs.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-005571?logo=fastapi)](https://fastapi.tiangolo.com/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 
-This project demonstrates an end-to-end RAG pipeline integrating vector search, transformer-based embeddings, and a local large language model to return traceable, citation-backed responses.
+A Retrieval-Augmented Generation (RAG) system for querying and analyzing SEC 10-K filings. Ask questions in natural language and get answers backed by cited source documents — all processed locally with no data sent to external APIs.
 
-Overview
+![Homepage](docs/screenshots/homepage.png)
 
-Large language models alone are not reliable knowledge systems.
-They lack access to structured domain data and can produce hallucinated outputs.
+![Search Results](docs/screenshots/search-results.png)
 
-This system implements Retrieval-Augmented Generation (RAG) to:
+## Architecture
 
-Index real SEC 10-K filings into a vector database
+```
+┌─────────────────────┐
+│  React + TypeScript  │  Frontend (Vite, Tailwind CSS)
+└─────────┬───────────┘
+          │ REST API
+┌─────────▼───────────┐
+│  FastAPI + Python    │  Backend (Pydantic, uvicorn)
+└─────────┬───────────┘
+          │
+    ┌─────▼─────┐     ┌──────────────┐
+    │  Qdrant   │     │  Ollama LLM  │
+    │  vectors  │     │  (llama3.1)  │
+    └───────────┘     └──────────────┘
+```
 
-Retrieve semantically relevant document chunks
+| Layer | Tech |
+|-------|------|
+| Frontend | React 18, TypeScript, Tailwind CSS, Vite |
+| Backend | FastAPI, Pydantic, Python 3.11+ |
+| Vector Store | Qdrant |
+| Embeddings | sentence-transformers/all-MiniLM-L6-v2 |
+| LLM | llama3.1:8b via Ollama |
+| Data | SEC 10-K filings (Hugging Face) |
 
-Construct a grounded prompt using retrieved context
+## Quick Start
 
-Generate an answer constrained to source material
+### Prerequisites
 
-Return ranked citations with metadata for traceability
+- [Docker](https://docs.docker.com/get-docker/) and Docker Compose
+- [Ollama](https://ollama.ai/) with `llama3.1:8b` pulled
 
-The result is a reproducible, domain-specific question answering service.
+```bash
+ollama pull llama3.1:8b
+```
 
-##DEMO
+### Run with Docker (recommended)
 
-### API Documentation
+```bash
+git clone <repository-url>
+cd rag-filing-analyst
 
-<img width="1469" height="792" alt="home page screenshot rag" src="https://github.com/user-attachments/assets/73e839f5-5f6e-4f6a-9a5e-e6aa93843fa1" />
+# Start all services
+docker compose --profile full up -d
 
-### Example Query Response
-<img width="928" height="244" alt="updated rag response" src="https://github.com/user-attachments/assets/d30c11ba-720b-41a6-a72e-b86cd6faae32" />
+# Index SEC filings into the vector database
+docker exec rag-api python -m scripts.index_sec_dataset
 
+# Open http://localhost:3000
+```
 
+### Run locally
 
-Architecture
-
-User Query
-↓
-Embedding Model (Sentence-Transformers)
-↓
-Vector Search (Qdrant)
-↓
-Top-K Relevant Filing Chunks
-↓
-Grounded Prompt Construction
-↓
-Local LLM Inference (Ollama)
-↓
-Structured JSON Response (Answer + Citations)
-
-Tech Stack
-
-Backend:
-
-Python 3.11
-
-FastAPI
-
-Pydantic
-
-Vector Store:
-
-Qdrant (Dockerized)
-
-Embeddings:
-
-sentence-transformers/all-MiniLM-L6-v2
-
-LLM:
-
-llama3.1:8b (via Ollama)
-
-Dataset:
-
-SEC 10-K filings (Hugging Face dataset)
-
-API
-Health Check
-
-GET /health
-
-Query
-
-POST /query
-
-Request:
-
-{
-"query": "Summarize the key risk factors mentioned."
-}
-
-Response:
-
-{
-"answer": "...",
-"citations": [
-{
-"score": 0.67,
-"company": "0000001750",
-"year": "2020",
-"filingDate": "2020-07-21",
-"docID": "0000001750_10-K_2020",
-"section": "1"
-}
-]
-}
-
-Swagger UI available at:
-
-http://localhost:8000/docs
-
-Quickstart
-
-Start Qdrant
-
+```bash
+# 1. Start Qdrant
 docker compose up -d
 
-Install dependencies
-
-python3 -m venv .venv
-source .venv/bin/activate
+# 2. Backend
+cd backend
+python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
+python -m scripts.index_sec_dataset
+uvicorn src.api.main:app --reload --port 8000
 
-Pull local model
+# 3. Frontend (new terminal)
+cd frontend
+npm install
+npm run dev
+```
 
-ollama pull llama3.1:8b
+### Available services
 
-Index dataset
+| Service | URL |
+|---------|-----|
+| Frontend | http://localhost:3000 |
+| API Docs (Swagger) | http://localhost:8000/docs |
+| Health Check | http://localhost:8000/health |
+| Qdrant Dashboard | http://localhost:6333/dashboard |
 
-python3 -m scripts.index_sec_dataset
+## Usage
 
-Run API
+### Web Interface
 
-uvicorn src.api.main:app --reload
+Enter a question in the search bar. The system retrieves relevant filing excerpts via vector similarity search, then generates an answer using the local LLM with citations.
 
-Key Capabilities
+**Example queries:**
+- "What are the main risk factors mentioned in recent filings?"
+- "Summarize the business model and revenue streams"
+- "What regulatory challenges does the company face?"
 
-Semantic retrieval over financial filings
+### API
 
-Context-aware answer generation
+```bash
+# Query
+curl -X POST http://localhost:8000/query \
+  -H "Content-Type: application/json" \
+  -d '{"query": "What are the key risk factors?"}'
 
-Ranked citations with document metadata
+# Health
+curl http://localhost:8000/health
 
-Modular architecture (vectorstore, embeddings, LLM separated)
+# Stats
+curl http://localhost:8000/stats
+```
 
-Fully local inference pipeline
+## Project Structure
 
-Reproducible environment
+```
+rag-filing-analyst/
+├── frontend/                  # React TypeScript SPA
+│   ├── src/
+│   │   ├── components/        # UI components
+│   │   ├── hooks/             # Custom React hooks
+│   │   ├── services/          # API client (Axios)
+│   │   ├── types/             # TypeScript interfaces
+│   │   └── utils/             # Helpers
+│   ├── Dockerfile             # Production (nginx)
+│   └── Dockerfile.dev         # Development (Vite HMR)
+├── backend/                   # FastAPI application
+│   ├── src/
+│   │   ├── api/               # Endpoints + schemas
+│   │   └── rag_core/          # RAG pipeline (embeddings, LLM, vectorstore, chunking)
+│   ├── scripts/               # Data indexing
+│   ├── tests/                 # pytest suite
+│   ├── Dockerfile             # Production
+│   └── Dockerfile.dev         # Development (hot reload)
+├── docs/                      # Documentation
+├── .github/workflows/         # CI/CD (lint, test, build, security scan)
+├── docker-compose.yml         # Development services
+├── docker-compose.prod.yml    # Production deployment
+└── Makefile                   # Dev commands
+```
 
-Future Extensions
+## Development
 
-Hybrid retrieval (BM25 + vector)
+```bash
+make help          # Show all available commands
+make dev           # Start all services
+make test-backend  # Run pytest
+make lint-backend  # Run black + isort checks
+make lint-frontend # Run ESLint
+make index         # Index SEC filings
+make logs          # Tail container logs
+make down          # Stop services
+```
 
-Cross-encoder reranking
+### Manual setup
 
-Retrieval evaluation metrics (Recall@K)
+**Backend:**
+```bash
+cd backend
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+pytest                                             # Run tests
+black --check src/ tests/                          # Format check
+uvicorn src.api.main:app --reload --port 8000      # Dev server
+```
 
-Multi-year comparative analysis
+**Frontend:**
+```bash
+cd frontend
+npm install
+npm run dev          # Dev server with HMR
+npm run build        # Production build
+npm run lint         # ESLint
+npm run type-check   # TypeScript validation
+npm run format       # Prettier
+```
 
-Frontend interface
+## API Reference
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/health` | Service health + dependency status |
+| `POST` | `/query` | Natural language query with RAG |
+| `GET` | `/stats` | Collection and model statistics |
+| `GET` | `/docs` | Interactive Swagger documentation |
+
+See [docs/API.md](docs/API.md) for full request/response schemas and examples.
+
+## License
+
+[MIT](LICENSE)

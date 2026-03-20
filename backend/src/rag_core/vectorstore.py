@@ -1,5 +1,9 @@
+import logging
+
 from qdrant_client import QdrantClient
 from qdrant_client.http import models as qm
+
+logger = logging.getLogger(__name__)
 
 
 class QdrantStore:
@@ -23,9 +27,12 @@ class QdrantStore:
 
     def search(self, query_vector: list[float], limit: int):
         """Return the most similar chunks to the query vector."""
-        return self.client.search(
+        logger.debug("Searching collection=%s limit=%d", self.collection, limit)
+        results = self.client.search(
             collection_name=self.collection,
             query_vector=query_vector,
             limit=limit,
             with_payload=True,
         )
+        logger.debug("Search returned %d results", len(results))
+        return results
