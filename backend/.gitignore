@@ -70,3 +70,7 @@ htmlcov/
 .mypy_cache/
 .dmypy.json
 dmypy.json
+
+# Eval corpora — regenerable from the dataset and ~100MB. The gold set, the manual rewrites
+# and the result JSONs are committed; the chunk dumps they were scored against are not.
+eval/data/corpus*.jsonl

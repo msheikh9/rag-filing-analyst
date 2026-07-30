@@ -6,12 +6,18 @@ import pytest
 from fastapi.testclient import TestClient
 
 
-def _make_search_result(text="Sample chunk text", score=0.95, chunk_id="chunk_1",
-                        company="Apple Inc.", year="2023", filing_date="2023-10-30",
-                        doc_id="0000320193-23-000106", section="Item 1"):
-    result = MagicMock()
-    result.score = score
-    result.payload = {
+def _make_search_result(
+    text="Sample chunk text",
+    score=0.95,
+    chunk_id="chunk_1",
+    company="Apple Inc.",
+    year="2023",
+    filing_date="2023-10-30",
+    doc_id="0000320193-23-000106",
+    section="Item 1",
+):
+    """A retrieved chunk as Retriever.retrieve returns it: payload fields plus a score."""
+    return {
         "text": text,
         "chunk_id": chunk_id,
         "company": company,
@@ -19,8 +25,8 @@ def _make_search_result(text="Sample chunk text", score=0.95, chunk_id="chunk_1"
         "filingDate": filing_date,
         "docID": doc_id,
         "section": section,
+        "score": score,
     }
-    return result
 
 
 @pytest.fixture()
@@ -29,39 +35,33 @@ def search_result_factory():
 
 
 @pytest.fixture()
-def mock_qdrant_store():
-    store = MagicMock()
-    store.search.return_value = [
+def mock_retriever():
+    retriever = MagicMock()
+    retriever.retrieve.return_value = [
         _make_search_result(),
         _make_search_result(chunk_id="chunk_2", score=0.88),
     ]
     collection_info = SimpleNamespace(vectors_count=1500, points_count=1500)
-    store.client.get_collection.return_value = collection_info
-    return store
-
-
-@pytest.fixture()
-def mock_embedder():
-    embedder = MagicMock()
-    embedder.embed_query.return_value = [0.1] * 384
-    return embedder
+    retriever.store.client.get_collection.return_value = collection_info
+    return retriever
 
 
 @pytest.fixture()
 def mock_llm():
     llm = MagicMock()
-    llm.generate.return_value = "Based on the SEC filing, the company reported strong revenue growth."
+    llm.generate.return_value = (
+        "Based on the SEC filing, the company reported strong revenue growth."
+    )
     return llm
 
 
 @pytest.fixture()
-def client(mock_qdrant_store, mock_embedder, mock_llm):
+def client(mock_retriever, mock_llm):
     from src.api.main import app
 
     @asynccontextmanager
     async def _test_lifespan(a):
-        a.state.store = mock_qdrant_store
-        a.state.embedder = mock_embedder
+        a.state.retriever = mock_retriever
         a.state.llm = mock_llm
         yield
 

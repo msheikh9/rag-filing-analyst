@@ -5,10 +5,10 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.rag_core.config import settings
-from src.rag_core.vectorstore import QdrantStore
-from src.rag_core.embeddings import Embedder
 from src.rag_core.llm import OllamaLLM
-from .schemas import QueryRequest, QueryResponse, Citation
+from src.rag_core.retriever import Retriever
+
+from .schemas import Citation, QueryRequest, QueryResponse
 
 logger = logging.getLogger(__name__)
 
@@ -16,10 +16,13 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Initializing RAG dependencies...")
-    app.state.store = QdrantStore(settings.qdrant_url, settings.qdrant_collection)
-    app.state.embedder = Embedder(settings.embedding_model)
+    app.state.retriever = Retriever(settings)
     app.state.llm = OllamaLLM(settings.ollama_url, settings.ollama_model)
-    logger.info("RAG dependencies ready.")
+    logger.info(
+        "RAG dependencies ready (mode=%s, rerank=%s).",
+        settings.retrieval_mode,
+        settings.enable_rerank,
+    )
     yield
     logger.info("Shutting down RAG Filing Analyst API.")
 
@@ -49,9 +52,7 @@ app.add_middleware(
 
 
 def build_prompt(question: str, contexts: list[dict]) -> str:
-    context_block = "\n\n".join(
-        [f"[chunk_id={c['chunk_id']}] {c['text']}" for c in contexts]
-    )
+    context_block = "\n\n".join([f"[chunk_id={c['chunk_id']}] {c['text']}" for c in contexts])
     return f"""You are a professional financial analyst reviewing SEC 10-K filings.
 Answer the question using ONLY the context provided below. If the context is insufficient, say you don't have enough information.
 
@@ -88,44 +89,38 @@ def query(req: QueryRequest, request: Request):
     if len(req.query) > 1000:
         raise HTTPException(status_code=400, detail="Query too long (max 1000 characters)")
 
-    store: QdrantStore = request.app.state.store
-    embedder: Embedder = request.app.state.embedder
+    retriever: Retriever = request.app.state.retriever
     llm: OllamaLLM = request.app.state.llm
 
     try:
-        qvec = embedder.embed_query(req.query)
+        results = retriever.retrieve(req.query, top_k=settings.top_k)
     except Exception:
-        logger.exception("Embedding generation failed")
-        raise HTTPException(status_code=502, detail="Embedding service unavailable")
-
-    try:
-        results = store.search(query_vector=qvec, limit=settings.top_k)
-    except Exception:
-        logger.exception("Vector search failed")
-        raise HTTPException(status_code=502, detail="Vector store unavailable")
+        logger.exception("Retrieval failed")
+        raise HTTPException(status_code=502, detail="Retrieval unavailable")
 
     contexts = []
     citations: list[Citation] = []
 
     for r in results:
-        p = r.payload or {}
-        text = p.get("text", "")
-        chunk_id = p.get("chunk_id")
+        text = r.get("text", "")
+        chunk_id = r.get("chunk_id")
 
-        contexts.append({
-            "chunk_id": chunk_id,
-            "text": text[:800],
-        })
+        contexts.append(
+            {
+                "chunk_id": chunk_id,
+                "text": text[:800],
+            }
+        )
 
         citations.append(
             Citation(
-                score=float(r.score),
+                score=float(r["score"]),
                 chunk_id=chunk_id,
-                company=p.get("company"),
-                year=p.get("year"),
-                filingDate=p.get("filingDate"),
-                docID=p.get("docID"),
-                section=p.get("section"),
+                company=r.get("company"),
+                year=r.get("year"),
+                filingDate=r.get("filingDate"),
+                docID=r.get("docID"),
+                section=r.get("section"),
                 snippet=(text[:240] + "...") if text else None,
             )
         )
@@ -143,15 +138,17 @@ def query(req: QueryRequest, request: Request):
 @app.get("/stats")
 def get_stats(request: Request):
     """Get system statistics"""
-    store: QdrantStore = request.app.state.store
+    retriever: Retriever = request.app.state.retriever
     try:
-        collection_info = store.client.get_collection(settings.qdrant_collection)
+        collection_info = retriever.store.client.get_collection(settings.qdrant_collection)
         return {
             "collection_name": settings.qdrant_collection,
             "vector_count": collection_info.vectors_count,
             "indexed_points": collection_info.points_count,
             "embedding_model": settings.embedding_model,
             "llm_model": settings.ollama_model,
+            "retrieval_mode": settings.retrieval_mode,
+            "rerank_enabled": settings.enable_rerank,
         }
     except Exception:
         logger.exception("Failed to retrieve collection stats")
@@ -169,6 +166,6 @@ def root():
         "endpoints": {
             "query": "POST /query - Submit a natural language query",
             "stats": "GET /stats - Get system statistics",
-            "health": "GET /health - Health check"
-        }
+            "health": "GET /health - Health check",
+        },
     }

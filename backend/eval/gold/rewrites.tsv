@@ -1,0 +1,59 @@
+# Stage-2 manual rewrites of the Llama drafts in eval/data/gold_draft.jsonl.
+# Each line: qid <TAB> rewritten query.
+# Rewrite goals, applied to all 50:
+#   1. Break verbatim vocabulary overlap with the source chunk (synonyms, reordered framing)
+#      so retrieval is not scored on string matching.
+#   2. Resolve dangling references — several drafts opened with "he"/"our"/"the company"
+#      with no antecedent, which no retriever could resolve.
+#   3. Add a company/date discriminator where the draft was answerable by boilerplate that
+#      recurs across filings (disclosure controls, safe harbour, forward-looking language).
+q001	How many DES offspring injury cases and infant-formula antitrust actions did Abbott have pending at the start of 1994?
+q002	Which student-focused television network founded by Mr. Kidrin ended up under MTV ownership?
+q003	Which AAR unit is the tenant on the Garden City property leased from iStar in October 2003?
+q004	Where does AMD warn that predictions in its annual report rest on present beliefs and may diverge from eventual outcomes?
+q005	How much would Adams Resources' earnings have dropped in 2006 under a 10% unfavourable move in gas and oil prices?
+q006	When did Cordis and Wyeth first sue Abbott in New Jersey over the Xience stent patents?
+q007	In what month did AMD launch the Athlon XP for high-end desktops?
+q008	Under which 1995 statute does Acme United claim safe harbour for its forward-looking disclosures?
+q009	Beginning in which year were drug and device makers required to submit physician payment data to CMS for public posting?
+q010	Which Abbott exhibit references the extended disability plan filed with the 1992 annual report?
+q011	Which Worlds director spent roughly a decade overseeing direct investments at the Adelphia entities he co-founded?
+q012	How much did releasing previously reserved inventory add to AMD's 2013 gross margin, and how did that compare with 2014?
+q013	Which two officers must Acme United's disclosure controls funnel Exchange Act reporting information to?
+q014	How soon must waivers of the director and officer code be reported on Form 8-K, and when may a website posting substitute?
+q015	What is the measurement date for Air Products' fiscal 2016 table of shares issuable under equity compensation plans?
+q016	What strike price applies to the 100,000-share annual director option grants at Worlds, and when do they vest?
+q017	Which court is hearing the appeal in the AMD-Intel dispute over their 1982 technology exchange agreement?
+q018	What ownership threshold triggers Exchange Act reporting duties for holders of a company's common stock?
+q019	Which AMD process node and product are named in the shareholder complaint alleging an inflated stock price?
+q020	What communication and browsing capabilities are built into the WorldsPlayer client?
+q021	How much domestic commercial paper did Abbott have outstanding at the end of 2002 versus 2001, and at what average rates?
+q022	Adams Resources schedule of capital lease commitments for the five years after December 31, 2018
+q023	What target mix of stocks, bonds, and cash does Acme United's pension investment policy use?
+q024	Which Abbott exhibit is the interim performance-based restricted stock form under the 2017 stock program?
+q025	On Acme United's exhibit list, what document is filed as item 3(ii)?
+q026	How can investors obtain Abbott's periodic SEC reports at no cost?
+q027	Which Acme United director previously ran Westinghouse's Bryant Electric Division and served as Bridgeport's chief administrative officer?
+q028	AAR reconciliation of pension benefit obligation and plan asset values for its domestic and overseas plans
+q029	At what price must AMD buy back its 8.125% notes if a change of control occurs?
+q030	In AMD's 2009 option exchange, how many shares were tendered and how many replacement options were issued at what price?
+q031	What strike price and vesting date apply to the 7.5 million options in the Worlds executive employment agreement?
+q032	Which asset types create AMD's credit risk concentrations?
+q033	How many Asian locations does the electronics and performance materials segment run, and how many sit on customer premises?
+q034	Why can Worlds not seek damages for infringement occurring before September 2013?
+q035	What impairment and equity-method losses made up Adams Resources' 2016 write-off of its Bencap stake?
+q036	When did AMD plan to drop the IBM distributor payment adjustment from its non-GAAP free cash flow?
+q037	In which states were cases against Abbott filed between late October 1994 and January 1995?
+q038	How many Abbott shares were surrendered to cover option exercise costs in each month of the fourth quarter?
+q039	Why did Abbott's long-term investments balance fall during 2020?
+q040	As of what date did Acme United management assess whether its disclosure controls were effective for fiscal 2020?
+q041	Which Abbott exhibit covers annual performance restricted stock units for executives based outside the United States?
+q042	Why did AMD omit the financial statement schedules from its Form 10-K?
+q043	Which FCC requirement is expected to drive public safety agencies to upgrade to P-25 land mobile radios?
+q044	Why did AMD's gross margin jump to 49% in 2006 from 41% the year before?
+q045	Which Acme United board member previously led Goodwill Industries, and how large was it?
+q046	Which IBM entities and AMD subsidiary signed the March 2008 receivables sale agreement?
+q047	What caused AMD's unit shipments to fall in the fourth quarter of 2008?
+q048	How many shares did Acme United's October 2005 buyback authorisation cover?
+q049	What risk does AMD flag if noteholders accelerate repayment of its 7.75%, 8.125%, 5.75%, or 6.00% notes?
+q050	Where does Abbott direct readers for details on its 1996 and 2009 incentive stock programs and the non-U.S. employee stock purchase plan?
