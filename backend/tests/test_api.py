@@ -1,6 +1,5 @@
 import pytest
 
-
 pytestmark = pytest.mark.unit
 
 
@@ -63,15 +62,17 @@ class TestQueryEndpoint:
         resp = client.post("/query", json={})
         assert resp.status_code == 422
 
-    def test_query_calls_embedder_with_input(self, client, mock_embedder):
+    def test_query_calls_retriever_with_input(self, client, mock_retriever):
         client.post("/query", json={"query": "What is net income?"})
-        mock_embedder.embed_query.assert_called_once_with("What is net income?")
+        mock_retriever.retrieve.assert_called_once()
+        args, kwargs = mock_retriever.retrieve.call_args
+        assert "What is net income?" in args
+        assert "top_k" in kwargs
 
-    def test_query_calls_store_search(self, client, mock_qdrant_store):
-        client.post("/query", json={"query": "Revenue?"})
-        mock_qdrant_store.search.assert_called_once()
-        call_kwargs = mock_qdrant_store.search.call_args
-        assert "query_vector" in call_kwargs.kwargs or len(call_kwargs.args) > 0
+    def test_retrieval_failure_returns_502(self, client, mock_retriever):
+        mock_retriever.retrieve.side_effect = RuntimeError("Qdrant down")
+        resp = client.post("/query", json={"query": "Revenue?"})
+        assert resp.status_code == 502
 
     def test_query_calls_llm_generate(self, client, mock_llm):
         client.post("/query", json={"query": "Expenses?"})
@@ -84,16 +85,16 @@ class TestQueryEndpoint:
         resp = client.post("/query", json={"query": "Revenue?"})
         assert resp.status_code == 502
 
-    def test_snippet_truncated_to_243_chars(self, client, mock_qdrant_store, search_result_factory):
+    def test_snippet_truncated_to_243_chars(self, client, mock_retriever, search_result_factory):
         long_text = "A" * 500
-        mock_qdrant_store.search.return_value = [search_result_factory(text=long_text)]
+        mock_retriever.retrieve.return_value = [search_result_factory(text=long_text)]
         resp = client.post("/query", json={"query": "Test?"})
         snippet = resp.json()["citations"][0]["snippet"]
         assert snippet.endswith("...")
         assert len(snippet) == 243
 
-    def test_empty_search_results_returns_empty_citations(self, client, mock_qdrant_store):
-        mock_qdrant_store.search.return_value = []
+    def test_empty_search_results_returns_empty_citations(self, client, mock_retriever):
+        mock_retriever.retrieve.return_value = []
         resp = client.post("/query", json={"query": "Something obscure?"})
         assert resp.status_code == 200
         data = resp.json()
@@ -112,8 +113,8 @@ class TestStatsEndpoint:
         assert "embedding_model" in data
         assert "llm_model" in data
 
-    def test_qdrant_failure_returns_503(self, client, mock_qdrant_store):
-        mock_qdrant_store.client.get_collection.side_effect = ConnectionError("Qdrant down")
+    def test_qdrant_failure_returns_503(self, client, mock_retriever):
+        mock_retriever.store.client.get_collection.side_effect = ConnectionError("Qdrant down")
         resp = client.get("/stats")
         assert resp.status_code == 503
 
@@ -121,6 +122,7 @@ class TestStatsEndpoint:
 class TestBuildPrompt:
     def test_prompt_contains_question_and_context(self):
         from src.api.main import build_prompt
+
         contexts = [
             {"chunk_id": "c1", "text": "Revenue was $100M."},
             {"chunk_id": "c2", "text": "Net income grew 15%."},
@@ -134,5 +136,6 @@ class TestBuildPrompt:
 
     def test_prompt_empty_contexts(self):
         from src.api.main import build_prompt
+
         prompt = build_prompt("Any question?", [])
         assert "Any question?" in prompt

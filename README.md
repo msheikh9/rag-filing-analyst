@@ -8,6 +8,41 @@
 
 A Retrieval-Augmented Generation (RAG) system for querying and analyzing SEC 10-K filings. Ask questions in natural language and get answers backed by cited source documents — all processed locally with no data sent to external APIs.
 
+## Retrieval quality
+
+Retrieval is measured, not assumed. Against a 50-query hand-written gold set, replacing the
+dense-only search with hybrid dense + BM25 is a statistically significant improvement — and
+cross-encoder reranking is not, so it ships disabled.
+
+| Configuration | hit@1 | MRR@10 | nDCG@10 | p50 | p95 |
+|---|---|---|---|---|---|
+| dense only *(previous)* | 0.76 | 0.8123 | 0.8339 | 13 ms | 35 ms |
+| **hybrid dense + BM25** *(current)* | **0.92** | **0.9529** | **0.9645** | 14 ms | 36 ms |
+| hybrid + cross-encoder rerank | 0.94 | 0.9600 | 0.9652 | 231 ms | 432 ms |
+
+Paired bootstrap over the 50 queries (10 000 resamples) plus a sign test, on nDCG@10:
+
+| Comparison | Δ nDCG@10 | 95% CI | better / worse | p | Verdict |
+|---|---|---|---|---|---|
+| dense → **hybrid** | **+0.131** | [+0.059, +0.212] | 11 / 0 | **0.001** | **significant** |
+| hybrid → + rerank | +0.001 | [−0.055, +0.044] | 4 / 2 | 0.688 | not significant |
+
+The reranker is off because it earns nothing here, not because of its cost: generation dominates
+end-to-end latency at 6.5 s p50, so 200 ms of reranking is ~3% of a response. All three retrieval
+legs converge to *identical* metrics once reranked, agreeing on rank-1 for 50/50 queries — every
+leg already places the answer inside the top 30, so the cross-encoder, not the retriever, decides
+the final order, and its ceiling sits below plain BM25.
+
+Method, every finding, the chunking A/B, and **the limits of this gold set** (it is known-item and
+entity-heavy, which flatters BM25) are in **[docs/EVALUATION.md](docs/EVALUATION.md)**. Raw runs
+are committed under [`backend/eval/results/`](backend/eval/results/).
+
+```bash
+make eval-index    # freeze the corpus, build the hybrid collection
+make eval          # baseline vs hybrid vs rerank, with latency percentiles
+make eval-compare  # metric/latency table across saved runs
+```
+
 ## Demo
 <img width="1442" height="795" alt="Results SEC" src="https://github.com/user-attachments/assets/73f2e39e-b425-4121-95d5-d07dcbdf6768" />
 
@@ -34,7 +69,8 @@ A Retrieval-Augmented Generation (RAG) system for querying and analyzing SEC 10-
 |-------|------|
 | Frontend | React 18, TypeScript, Tailwind CSS, Vite |
 | Backend | FastAPI, Pydantic, Python 3.11+ |
-| Vector Store | Qdrant |
+| Vector Store | Qdrant (named dense + BM25 sparse vectors) |
+| Retrieval | Hybrid dense + BM25, RRF fused server-side |
 | Embeddings | sentence-transformers/all-MiniLM-L6-v2 |
 | LLM | llama3.1:8b via Ollama |
 | Data | SEC 10-K filings (Hugging Face) |
@@ -135,12 +171,16 @@ rag-filing-analyst/
 ├── backend/                   # FastAPI application
 │   ├── src/
 │   │   ├── api/               # Endpoints + schemas
-│   │   └── rag_core/          # RAG pipeline (embeddings, LLM, vectorstore, chunking)
-│   ├── scripts/               # Data indexing
+│   │   └── rag_core/          # retriever, embeddings, sparse (BM25), rerank,
+│   │                          #   vectorstore (dense + sparse), chunking, LLM
+│   ├── eval/                  # Retrieval eval: metrics, harness, gold set, saved runs
+│   │   ├── gold/              # 50-query gold set + the manual rewrites applied to it
+│   │   └── results/           # Committed run output backing the README table
+│   ├── scripts/               # Indexing + gold-set / corpus construction
 │   ├── tests/                 # pytest suite
 │   ├── Dockerfile             # Production
 │   └── Dockerfile.dev         # Development (hot reload)
-├── docs/                      # Documentation
+├── docs/                      # Documentation (incl. EVALUATION.md)
 ├── .github/workflows/         # CI/CD (lint, test, build, security scan)
 ├── docker-compose.yml         # Development services
 ├── docker-compose.prod.yml    # Production deployment
